@@ -1,0 +1,19 @@
+[Unit]
+Description=Inventario SMT (ASP.NET Core)
+After=network.target
+
+[Service]
+WorkingDirectory=/opt/inventario
+ExecStart=/opt/inventario/InventarioSmt
+Restart=always
+RestartSec=10
+User=www-data
+Group=www-data
+Environment=ASPNETCORE_ENVIRONMENT=Production
+Environment=ASPNETCORE_URLS=http://127.0.0.1:5000
+Environment=DOTNET_PRINT_TELEMETRY_MESSAGE=false
+EnvironmentFile=/etc/inventario/inventario.env
+SyslogIdentifier=inventario
+
+[Install]
+WantedBy=multi-user.target
