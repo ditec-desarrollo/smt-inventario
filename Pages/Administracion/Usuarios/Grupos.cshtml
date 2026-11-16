@@ -1,0 +1,74 @@
+@page
+@model InventarioSmt.Pages.Administracion.Usuarios.GruposModel
+@{
+    ViewData["Title"] = "Grupos";
+}
+
+<div class="panel">
+    <div class="panel-encabezado">
+        <h2>Grupos de usuarios</h2>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <a class="btn btn-secundario" asp-page="Index">
+                <span class="material-symbols-outlined">arrow_back</span> Usuarios
+            </a>
+            <a class="btn btn-primario" asp-page="GrupoEditar">
+                <span class="material-symbols-outlined">add</span> Nuevo grupo
+            </a>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrEmpty(Model.Mensaje))
+    {
+        <div class="seccion-barra">@Model.Mensaje</div>
+    }
+
+    <div class="tabla-scroll">
+        <table class="tabla-smt">
+            <thead>
+                <tr>
+                    <th>Grupo</th>
+                    <th>Detalle</th>
+                    <th>Módulos</th>
+                    <th>Usuarios</th>
+                    <th>Estado</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var g in Model.Lista)
+                {
+                    var inactivo = g.Estado != 0;
+                    var modulos = g.Accesos.Where(a => a.Card is not null).OrderBy(a => a.Card!.Orden).Select(a => a.Card!.Title).ToList();
+                    <tr class="@(inactivo ? "inactivo" : null)">
+                        <td>@g.Nombre</td>
+                        <td>@g.Detalle</td>
+                        <td>@(modulos.Count == 0 ? "Ninguno" : string.Join(", ", modulos))</td>
+                        <td>
+                            <a asp-page="Index" asp-route-Grupo="@g.IdGrupo">@(Model.Miembros.TryGetValue(g.IdGrupo, out var n) ? n : 0)</a>
+                        </td>
+                        <td>
+                            <span class="chip @(inactivo ? "chip-inactivo" : "chip-activo")">@(inactivo ? "Inactivo" : "Activo")</span>
+                        </td>
+                        <td>
+                            <div style="display:flex;gap:6px">
+                                <a class="btn btn-secundario btn-chico" asp-page="GrupoEditar" asp-route-id="@g.IdGrupo">Editar</a>
+                                <form method="post" asp-page-handler="Baja"
+                                      onsubmit="return confirm('@(inactivo ? "¿Reactivar el grupo?" : "¿Dar de baja el grupo? Sus usuarios pierden los módulos que les daba.")');">
+                                    <input type="hidden" name="id" value="@g.IdGrupo" />
+                                    <input type="hidden" name="reactivar" value="@(inactivo ? "true" : "false")" />
+                                    <button type="submit" class="btn btn-chico @(inactivo ? "btn-secundario" : "btn-peligro")">
+                                        @(inactivo ? "Reactivar" : "Baja")
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                }
+                @if (!Model.Lista.Any())
+                {
+                    <tr><td colspan="6">No hay grupos cargados.</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

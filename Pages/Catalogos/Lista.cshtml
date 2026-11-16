@@ -1,0 +1,124 @@
+@page "{catalogo}"
+@model InventarioSmt.Pages.Catalogos.ListaModel
+@{
+    ViewData["Title"] = Model.Definicion.Titulo;
+    var columnas = Model.Definicion.Columnas.ToList();
+    var bajaLogica = Model.Definicion.CampoEstado is not null;
+    var ruta = Model.Ruta();
+}
+
+<div class="panel">
+    <div class="panel-encabezado">
+        <h2>@Model.Definicion.Titulo</h2>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <a class="btn btn-secundario" asp-page="Index">
+                <span class="material-symbols-outlined">arrow_back</span> Catálogos
+            </a>
+            <a class="btn btn-secundario" asp-page="Lista" asp-page-handler="Pdf"
+               asp-all-route-data="ruta" target="_blank">
+                <span class="material-symbols-outlined">picture_as_pdf</span> Reporte PDF
+            </a>
+            <a class="btn btn-primario" asp-page="Editar" asp-all-route-data="ruta">
+                <span class="material-symbols-outlined">add</span> Nuevo
+            </a>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrEmpty(Model.Mensaje))
+    {
+        <div class="seccion-barra">@Model.Mensaje</div>
+    }
+
+    <form method="get" class="filtros">
+        @for (var i = 0; i < Model.Jerarquia.Count; i++)
+        {
+            var nivel = Model.Jerarquia[i];
+            var nombre = $"n[{i}]";
+            <div class="campo">
+                <label for="@nombre">@nivel.Etiqueta</label>
+                @* Al cambiar un nivel se recarga el filtro para acotar los niveles siguientes. *@
+                <select id="@nombre" name="@nombre" onchange="this.form.submit()"
+                        disabled="@(nivel.Opciones.Count == 0)">
+                    <option value="">@(nivel.Opciones.Count == 0 ? "(elegí el nivel anterior)" : "Todas")</option>
+                    @foreach (var o in nivel.Opciones)
+                    {
+                        <option value="@o.Valor" selected="@(o.Valor == nivel.Seleccionado)">@o.Texto</option>
+                    }
+                </select>
+            </div>
+        }
+        <div class="campo">
+            <label for="Buscar">Buscar</label>
+            <input id="Buscar" name="Buscar" value="@Model.Buscar" placeholder="Código o detalle" />
+        </div>
+        <button class="btn btn-primario" type="submit">
+            <span class="material-symbols-outlined">search</span> Filtrar
+        </button>
+        <a class="btn btn-secundario" asp-page="Lista" asp-route-catalogo="@Model.Catalogo">Limpiar</a>
+    </form>
+
+    <div class="seccion-barra">@Model.Total registro(s)</div>
+
+    <div class="tabla-scroll">
+        <table class="tabla-smt">
+            <thead>
+                <tr>
+                    @foreach (var c in columnas)
+                    {
+                        <th>@c.Etiqueta</th>
+                    }
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var fila in Model.Filas)
+                {
+                    var clave = Model.Clave(fila);
+                    var inactivo = Model.EstaInactivo(fila);
+                    <tr class="@(inactivo ? "inactivo" : null)">
+                        @foreach (var c in columnas)
+                        {
+                            <td>@Model.Texto(c, fila)</td>
+                        }
+                        <td>
+                            <div style="display:flex;gap:6px">
+                                <a class="btn btn-secundario btn-chico" asp-page="Editar"
+                                   asp-all-route-data="ruta" asp-route-clave="@clave">Editar</a>
+                                <form method="post" asp-page-handler="Baja"
+                                      asp-all-route-data="ruta" asp-route-Pagina="@Model.Pagina"
+                                      onsubmit="return confirm('@(inactivo ? "¿Reactivar el registro?" : bajaLogica ? "¿Dar de baja el registro?" : "¿Eliminar el registro definitivamente?")');">
+                                    <input type="hidden" name="clave" value="@clave" />
+                                    <input type="hidden" name="reactivar" value="@(inactivo ? "true" : "false")" />
+                                    <button type="submit" class="btn btn-chico @(inactivo ? "btn-secundario" : "btn-peligro")">
+                                        @(inactivo ? "Reactivar" : bajaLogica ? "Baja" : "Eliminar")
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                }
+                @if (!Model.Filas.Any())
+                {
+                    <tr><td colspan="@(columnas.Count + 1)">No hay registros para mostrar.</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    @if (Model.TotalPaginas > 1)
+    {
+        <div class="paginacion">
+            @if (Model.Pagina > 1)
+            {
+                <a class="btn btn-secundario btn-chico" asp-page="Lista" asp-all-route-data="ruta"
+                   asp-route-Pagina="@(Model.Pagina - 1)">Anterior</a>
+            }
+            <span>Página @Model.Pagina de @Model.TotalPaginas</span>
+            @if (Model.Pagina < Model.TotalPaginas)
+            {
+                <a class="btn btn-secundario btn-chico" asp-page="Lista" asp-all-route-data="ruta"
+                   asp-route-Pagina="@(Model.Pagina + 1)">Siguiente</a>
+            }
+        </div>
+    }
+</div>

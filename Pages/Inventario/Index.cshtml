@@ -1,0 +1,146 @@
+@page
+@model InventarioSmt.Pages.Inventario.IndexModel
+@{
+    ViewData["Title"] = "Inventario";
+}
+
+<div class="panel">
+    <div class="panel-encabezado">
+        <h2>Bienes del inventario</h2>
+        <div style="display:flex;gap:8px">
+            <a class="btn btn-secundario" href="/">
+                <span class="material-symbols-outlined">home</span> Volver al menú
+            </a>
+            <button type="button" class="btn btn-secundario" id="btnImprimirQr"
+                    data-url="@Url.Page("Etiqueta")">
+                <span class="material-symbols-outlined">qr_code_2</span> Imprimir QR seleccionados
+            </button>
+            <a class="btn btn-primario" asp-page="Editar">
+                <span class="material-symbols-outlined">add</span> Nuevo bien
+            </a>
+        </div>
+    </div>
+
+    <form method="get" class="filtros">
+        <div class="campo">
+            <label for="Buscar">Buscar</label>
+            <input id="Buscar" name="Buscar" value="@Model.Buscar" placeholder="Identificación, equipamiento, marca, serie..." />
+        </div>
+        <div class="campo">
+            <label for="Reparticion">Repartición</label>
+            <select id="Reparticion" name="Reparticion">
+                <option value="">Todas</option>
+                @foreach (var r in Model.Reparticiones)
+                {
+                    <option value="@r.Value" selected="@(Model.Reparticion?.ToString() == r.Value)">@r.Text</option>
+                }
+            </select>
+        </div>
+        <div class="campo">
+            <label for="Marca">Marca</label>
+            <input id="Marca" name="Marca" value="@Model.Marca" list="listaMarcas" placeholder="Todas" />
+            <datalist id="listaMarcas">
+                @foreach (var m in Model.Marcas)
+                {
+                    <option value="@m"></option>
+                }
+            </datalist>
+        </div>
+        <div class="campo">
+            <label for="Estado">Estado</label>
+            <select id="Estado" name="Estado">
+                <option value="">Todos</option>
+                @foreach (var e in Model.Estados)
+                {
+                    <option value="@e.Codigo" selected="@(Model.Estado == e.Codigo)">@e.Detalle</option>
+                }
+            </select>
+        </div>
+        <button class="btn btn-primario" type="submit">
+            <span class="material-symbols-outlined">search</span> Filtrar
+        </button>
+        <a class="btn btn-secundario" asp-page="Index">Limpiar</a>
+    </form>
+
+    <div class="seccion-barra">@Model.TotalRegistros bien(es) encontrado(s)</div>
+
+    <div class="tabla-scroll">
+        <table class="tabla-smt">
+            <thead>
+                <tr>
+                    <th><input type="checkbox" id="marcarTodos" title="Seleccionar todos" /></th>
+                    <th></th>
+                    <th>Identificación</th>
+                    <th>Equipamiento</th>
+                    <th>Marca / Modelo</th>
+                    <th>N° de serie</th>
+                    <th>Repartición</th>
+                    <th>Ubicación</th>
+                    <th>Valor</th>
+                    <th>Estado</th>
+                    <th>Fotos</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var b in Model.Bienes)
+                {
+                    <tr>
+                        <td><input type="checkbox" class="marcar-bien" value="@b.Id" /></td>
+                        <td>
+                            @if (!string.IsNullOrEmpty(b.Miniatura))
+                            {
+                                <img src="~/@b.Miniatura" alt="" style="width:52px;height:40px;object-fit:cover;border-radius:4px" />
+                            }
+                        </td>
+                        <td>@InventarioSmt.Servicios.FormatoHelper.Identificacion(b.Identificacion)</td>
+                        <td>@b.Equipamiento</td>
+                        <td>@b.Marca @b.Modelo</td>
+                        <td>@b.NroSerie</td>
+                        <td>@b.Reparticion</td>
+                        <td>@b.Ubicacion</td>
+                        <td class="importe">@b.ValorInicial.ToString("C0")</td>
+                        <td><span class="chip chip-activo">@b.Estado</span></td>
+                        <td>@b.CantidadFotos</td>
+                        <td>
+                            <div style="display:flex;gap:6px">
+                                <a class="btn btn-secundario btn-chico" asp-page="Detalle" asp-route-id="@b.Id">Ver</a>
+                                <a class="btn btn-secundario btn-chico" asp-page="Editar" asp-route-id="@b.Id">Editar</a>
+                                <a class="btn btn-secundario btn-chico" asp-page="Fotos" asp-route-id="@b.Id">Fotos</a>
+                            </div>
+                        </td>
+                    </tr>
+                }
+                @if (!Model.Bienes.Any())
+                {
+                    <tr><td colspan="12">No se encontraron bienes con los filtros aplicados.</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    @if (Model.TotalPaginas > 1)
+    {
+        <div class="paginacion">
+            @if (Model.Pagina > 1)
+            {
+                <a class="btn btn-secundario btn-chico" asp-page="Index" asp-route-Buscar="@Model.Buscar"
+                   asp-route-Estado="@Model.Estado" asp-route-Reparticion="@Model.Reparticion"
+                   asp-route-Marca="@Model.Marca" asp-route-Pagina="@(Model.Pagina - 1)">Anterior</a>
+            }
+            <span>Página @Model.Pagina de @Model.TotalPaginas</span>
+            @if (Model.Pagina < Model.TotalPaginas)
+            {
+                <a class="btn btn-secundario btn-chico" asp-page="Index" asp-route-Buscar="@Model.Buscar"
+                   asp-route-Estado="@Model.Estado" asp-route-Reparticion="@Model.Reparticion"
+                   asp-route-Marca="@Model.Marca" asp-route-Pagina="@(Model.Pagina + 1)">Siguiente</a>
+            }
+        </div>
+    }
+</div>
+
+@section Scripts {
+    <script>
+        prepararImpresionQr();
+    </script>
+}

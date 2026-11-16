@@ -1,0 +1,124 @@
+@page
+@model InventarioSmt.Pages.Administracion.Usuarios.IndexModel
+@using InventarioSmt.Servicios
+@{
+    ViewData["Title"] = "Usuarios";
+    var ruta = Model.Ruta(Model.Pagina);
+}
+
+<div class="panel">
+    <div class="panel-encabezado">
+        <h2>Usuarios</h2>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <a class="btn btn-secundario" href="/">
+                <span class="material-symbols-outlined">arrow_back</span> Inicio
+            </a>
+            <a class="btn btn-secundario" asp-page="Grupos">
+                <span class="material-symbols-outlined">groups</span> Grupos
+            </a>
+            <a class="btn btn-primario" asp-page="Editar">
+                <span class="material-symbols-outlined">person_add</span> Nuevo usuario
+            </a>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrEmpty(Model.Mensaje))
+    {
+        <div class="seccion-barra">@Model.Mensaje</div>
+    }
+
+    <form method="get" class="filtros">
+        <div class="campo">
+            <label for="Buscar">Buscar</label>
+            <input id="Buscar" name="Buscar" value="@Model.Buscar" placeholder="Nombre o CUIL" />
+        </div>
+        <div class="campo">
+            <label for="Grupo">Grupo</label>
+            <select id="Grupo" name="Grupo" asp-items="Model.Grupos">
+                <option value="">Todos</option>
+            </select>
+        </div>
+        <div class="campo">
+            <label for="Estado">Estado</label>
+            <select id="Estado" name="Estado">
+                <option value="">Todos</option>
+                <option value="0" selected="@(Model.Estado == "0")">Activos</option>
+                <option value="1" selected="@(Model.Estado == "1")">Inactivos</option>
+            </select>
+        </div>
+        <button class="btn btn-primario" type="submit">
+            <span class="material-symbols-outlined">search</span> Filtrar
+        </button>
+        <a class="btn btn-secundario" asp-page="Index">Limpiar</a>
+    </form>
+
+    <div class="seccion-barra">@Model.Total usuario(s)</div>
+
+    <div class="tabla-scroll">
+        <table class="tabla-smt">
+            <thead>
+                <tr>
+                    <th>Apellido y nombre</th>
+                    <th>CUIL</th>
+                    <th>Grupo</th>
+                    <th>Módulos habilitados</th>
+                    <th>Reparticiones</th>
+                    <th>Estado</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var u in Model.Usuarios)
+                {
+                    var inactivo = u.Estado != 0;
+                    var modulos = Model.Accesos.TryGetValue(u.IdUsuario, out var m) ? m : new();
+                    <tr class="@(inactivo ? "inactivo" : null)">
+                        <td>@u.ApellidoNombre @(u.IdUsuario == Model.IdPropio ? "(vos)" : "")</td>
+                        <td>@CuilHelper.Formatear(u.Cuil)</td>
+                        <td>@(u.Grupo is null ? "(sin grupo)" : u.Grupo.Estado == 0 ? u.Grupo.Nombre : u.Grupo.Nombre + " (inactivo)")</td>
+                        <td>@(modulos.Count == 0 ? "Ninguno" : string.Join(", ", modulos.Select(c => c.Title)))</td>
+                        <td>@(u.TodasReparticiones ? "Todas" : Model.ReparticionesPorUsuario.TryGetValue(u.IdUsuario, out var reps) ? string.Join(", ", reps) : "Ninguna (no ve bienes)")</td>
+                        <td>
+                            <span class="chip @(inactivo ? "chip-inactivo" : "chip-activo")">@(inactivo ? "Inactivo" : "Activo")</span>
+                        </td>
+                        <td>
+                            <div style="display:flex;gap:6px">
+                                <a class="btn btn-secundario btn-chico" asp-page="Editar" asp-route-id="@u.IdUsuario">Editar</a>
+                                @if (inactivo || u.IdUsuario != Model.IdPropio)
+                                {
+                                    <form method="post" asp-page-handler="Baja" asp-all-route-data="ruta"
+                                          onsubmit="return confirm('@(inactivo ? "¿Reactivar el usuario?" : "¿Dar de baja el usuario? No va a poder entrar al sistema.")');">
+                                        <input type="hidden" name="id" value="@u.IdUsuario" />
+                                        <input type="hidden" name="reactivar" value="@(inactivo ? "true" : "false")" />
+                                        <button type="submit" class="btn btn-chico @(inactivo ? "btn-secundario" : "btn-peligro")">
+                                            @(inactivo ? "Reactivar" : "Baja")
+                                        </button>
+                                    </form>
+                                }
+                            </div>
+                        </td>
+                    </tr>
+                }
+                @if (!Model.Usuarios.Any())
+                {
+                    <tr><td colspan="7">No hay usuarios para mostrar.</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    @if (Model.TotalPaginas > 1)
+    {
+        <div class="paginacion">
+            @if (Model.Pagina > 1)
+            {
+                <a class="btn btn-secundario btn-chico" asp-page="Index" asp-all-route-data="Model.Ruta(Model.Pagina - 1)">Anterior</a>
+            }
+            <span>Página @Model.Pagina de @Model.TotalPaginas</span>
+            @if (Model.Pagina < Model.TotalPaginas)
+            {
+                <a class="btn btn-secundario btn-chico" asp-page="Index" asp-all-route-data="Model.Ruta(Model.Pagina + 1)">Siguiente</a>
+            }
+        </div>
+    }
+</div>

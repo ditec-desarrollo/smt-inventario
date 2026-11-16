@@ -1,0 +1,62 @@
+@page "{id:int?}"
+@model InventarioSmt.Pages.Administracion.Usuarios.GrupoEditarModel
+@using InventarioSmt.Servicios
+@{
+    ViewData["Title"] = Model.EsAlta ? "Nuevo grupo" : "Editar grupo";
+}
+
+<div class="panel">
+    <div class="panel-encabezado">
+        <h2>@(Model.EsAlta ? "Alta de grupo" : $"Grupo {Model.Datos.Nombre}")</h2>
+        <a class="btn btn-secundario" asp-page="Grupos">Volver a grupos</a>
+    </div>
+
+    <form method="post">
+        <input type="hidden" asp-for="Datos.IdGrupo" />
+        <div asp-validation-summary="All" class="text-danger"></div>
+
+        <div class="seccion-barra">Datos del grupo</div>
+        <div class="grid-form">
+            <div class="campo">
+                <label asp-for="Datos.Nombre"></label>
+                <input asp-for="Datos.Nombre" />
+                <span asp-validation-for="Datos.Nombre" class="text-danger"></span>
+            </div>
+            <div class="campo campo-ancho">
+                <label asp-for="Datos.Detalle"></label>
+                <input asp-for="Datos.Detalle" />
+                <span asp-validation-for="Datos.Detalle" class="text-danger"></span>
+            </div>
+            <div class="campo">
+                <label asp-for="Datos.Estado"></label>
+                <select asp-for="Datos.Estado">
+                    <option value="0">Activo</option>
+                    <option value="1">Inactivo (no da accesos)</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="seccion-barra">Módulos del grupo</div>
+        <div class="lista-modulos">
+            @foreach (var c in Model.Cards)
+            {
+                <label class="modulo">
+                    <input type="checkbox" name="Modulos" value="@c.Id" checked="@Model.Modulos.Contains(c.Id)" />
+                    <span class="material-symbols-outlined">@IconoHelper.Normalizar(c.Icon)</span>
+                    <span>@c.Title@(c.Estado != 0 ? " (módulo inactivo)" : "")</span>
+                </label>
+            }
+        </div>
+
+        <div class="acciones">
+            <button type="submit" class="btn btn-primario">
+                <span class="material-symbols-outlined">save</span> Guardar
+            </button>
+            <a class="btn btn-secundario" asp-page="Grupos">Cancelar</a>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

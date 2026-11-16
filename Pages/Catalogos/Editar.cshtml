@@ -1,0 +1,145 @@
+@page "{catalogo}/{clave?}"
+@model InventarioSmt.Pages.Catalogos.EditarModel
+@{
+    ViewData["Title"] = Model.Definicion.Titulo;
+    var ruta = Model.Ruta();
+    var campoDependencia = Model.Cadena.Count > 1 ? Model.Definicion.CampoFiltro : null;
+}
+
+<div class="panel">
+    <div class="panel-encabezado">
+        <h2>@(Model.EsAlta ? "Nuevo registro" : "Editar registro") — @Model.Definicion.Titulo</h2>
+        <a class="btn btn-secundario" asp-page="Lista" asp-all-route-data="ruta">
+            <span class="material-symbols-outlined">arrow_back</span> Volver al listado
+        </a>
+    </div>
+
+    @if (!string.IsNullOrEmpty(Model.Error))
+    {
+        <div class="seccion-barra">@Model.Error</div>
+    }
+
+    <form method="post">
+        <div asp-validation-summary="All" class="text-danger"></div>
+        @for (var i = 0; i < Model.Niveles.Count; i++)
+        {
+            <input type="hidden" name="n[@i]" value="@Model.Niveles[i]" />
+        }
+
+        <div class="grid-form">
+            @if (campoDependencia is not null)
+            {
+                @* Cascada completa de la dependencia: el usuario ve en qué nivel se está metiendo. *@
+                @for (var i = 0; i < Model.Cadena.Count; i++)
+                {
+                    var nivel = Model.Cadena[i];
+                    var esUltimo = i == Model.Cadena.Count - 1;
+                    var seleccionado = i < Model.Camino.Count ? Model.Camino[i] : null;
+                    var id = $"nivel_{i}";
+                    <div class="campo">
+                        <label for="@id">@InventarioSmt.Servicios.Catalogos.Catalogo.EtiquetaNivel(nivel)</label>
+                        <select id="@id" data-nivel="@i"
+                                name="@(esUltimo ? $"Valores[{campoDependencia.Columna}]" : null)">
+                            <option value="">(sin asignar)</option>
+                            @foreach (var o in Model.Arbol[nivel])
+                            {
+                                <option value="@o.Valor" data-padre="@o.Padre"
+                                        selected="@(o.Valor == seleccionado)">@o.Texto</option>
+                            }
+                        </select>
+                    </div>
+                }
+            }
+
+            @foreach (var campo in Model.Definicion.Editables)
+            {
+                if (campoDependencia is not null && campo.Columna == campoDependencia.Columna)
+                {
+                    continue;
+                }
+
+                var nombre = $"Valores[{campo.Columna}]";
+                var valor = Model.Valores.TryGetValue(campo.Columna, out var v) ? v : string.Empty;
+                <div class="campo">
+                    <label for="@campo.Columna">@campo.Etiqueta</label>
+                    @if (campo.Lookup is not null && Model.Opciones.TryGetValue(campo.Lookup, out var opciones))
+                    {
+                        <select id="@campo.Columna" name="@nombre">
+                            <option value="">(sin asignar)</option>
+                            @foreach (var o in opciones)
+                            {
+                                <option value="@o.Valor" selected="@(o.Valor == valor)">@o.Texto</option>
+                            }
+                            @if (!string.IsNullOrEmpty(valor) && !opciones.Any(o => o.Valor == valor))
+                            {
+                                <option value="@valor" selected>@valor - (valor actual, fuera del catálogo)</option>
+                            }
+                        </select>
+                    }
+                    else if (campo.Tipo == InventarioSmt.Servicios.Catalogos.TipoCampo.Estado)
+                    {
+                        <select id="@campo.Columna" name="@nombre">
+                            <option value="0" selected="@(valor != "1")">0 - Activo</option>
+                            <option value="1" selected="@(valor == "1")">1 - Inactivo</option>
+                        </select>
+                    }
+                    else
+                    {
+                        <input id="@campo.Columna" name="@nombre" value="@valor"
+                               inputmode="@(campo.Tipo == InventarioSmt.Servicios.Catalogos.TipoCampo.Entero ? "numeric" : null)"
+                               maxlength="@(campo.Largo > 0 ? campo.Largo.ToString() : null)"
+                               readonly="@(campo.Clave && !Model.EsAlta)" />
+                    }
+                </div>
+            }
+        </div>
+
+        <div class="acciones">
+            <button type="submit" class="btn btn-primario">
+                <span class="material-symbols-outlined">save</span> Guardar
+            </button>
+            <a class="btn btn-secundario" asp-page="Lista" asp-all-route-data="ruta">Cancelar</a>
+        </div>
+    </form>
+</div>
+
+@if (campoDependencia is not null)
+{
+    <script>
+        // Cada nivel muestra solo los registros que dependen del nivel anterior.
+        (function () {
+            var niveles = Array.prototype.slice
+                .call(document.querySelectorAll('select[data-nivel]'))
+                .sort(function (a, b) { return a.dataset.nivel - b.dataset.nivel; });
+
+            function acotar(desde) {
+                for (var i = desde; i < niveles.length; i++) {
+                    var padre = niveles[i - 1].value;
+                    var opciones = niveles[i].options;
+                    var visible = false;
+
+                    for (var j = 0; j < opciones.length; j++) {
+                        var o = opciones[j];
+                        if (!o.value) { continue; }
+
+                        o.hidden = o.dataset.padre !== padre;
+                        o.disabled = o.hidden;
+                        if (!o.hidden) { visible = true; }
+                    }
+
+                    if (niveles[i].selectedOptions.length && niveles[i].selectedOptions[0].hidden) {
+                        niveles[i].value = '';
+                    }
+
+                    niveles[i].disabled = !padre || !visible;
+                }
+            }
+
+            niveles.forEach(function (select, i) {
+                select.addEventListener('change', function () { acotar(i + 1); });
+            });
+
+            acotar(1);
+        })();
+    </script>
+}

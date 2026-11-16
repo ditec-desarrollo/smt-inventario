@@ -1,0 +1,75 @@
+@page "{id:int}"
+@model InventarioSmt.Pages.Inventario.DetalleModel
+@{
+    ViewData["Title"] = "Detalle del bien";
+}
+
+<div class="panel">
+    <div class="panel-encabezado">
+        <h2>Bien N° @Model.Bien.Id — @Model.Bien.Equipamiento</h2>
+        <div style="display:flex;gap:8px">
+            <a class="btn btn-primario" asp-page="Editar" asp-route-id="@Model.Bien.Id">Editar</a>
+            <a class="btn btn-secundario" asp-page="Fotos" asp-route-id="@Model.Bien.Id">Fotos</a>
+            <a class="btn btn-secundario" asp-page="Index">Volver</a>
+        </div>
+    </div>
+
+    @if (TempData["Mensaje"] is string mensaje)
+    {
+        <div class="seccion-barra">@mensaje</div>
+    }
+
+    <div class="seccion-barra">Datos generales</div>
+    <div class="grid-form">
+        <div class="campo"><label>Identificación</label><div>@InventarioSmt.Servicios.FormatoHelper.Identificacion(Model.Bien.Identificacion)</div></div>
+        <div class="campo"><label>Marca / Modelo</label><div>@Model.Bien.Marca @Model.Bien.Modelo</div></div>
+        <div class="campo"><label>N° de serie</label><div>@Model.Bien.NroSerie</div></div>
+        <div class="campo"><label>Estado</label><div>@Model.Bien.EstadoNav?.Detalle</div></div>
+        <div class="campo"><label>Cantidad</label><div>@Model.Bien.Cantidad</div></div>
+        <div class="campo"><label>Nomenclador</label><div>@Model.Nomenclador</div></div>
+        <div class="campo"><label>Valor inicial</label><div class="importe">@Model.Bien.ValorInicial.ToString("C2")</div></div>
+        <div class="campo"><label>Repartición</label><div>@InventarioSmt.Servicios.FormatoHelper.SinDecimales(Model.Bien.Reparticion)</div></div>
+        <div class="campo campo-ancho"><label>Ubicación (depto / sección / subsección / oficina)</label><div>@(Model.Ubicacion ?? "Sin departamento")</div></div>
+        <div class="campo"><label>Ubicación física</label><div>@Model.Bien.UbicacionFisica</div></div>
+        <div class="campo"><label>Fecha de alta</label><div>@Model.Bien.FechaAlta?.ToString("dd/MM/yyyy")</div></div>
+        <div class="campo"><label>Fecha de baja</label><div>@Model.Bien.FechaBaja?.ToString("dd/MM/yyyy")</div></div>
+        <div class="campo campo-ancho"><label>Características</label><div>@Model.Bien.Caracteristicas</div></div>
+    </div>
+
+    <div class="seccion-barra">Documentación</div>
+    <div class="grid-form">
+        <div class="campo"><label>Expediente</label><div>@Model.Bien.Expediente</div></div>
+        <div class="campo"><label>Libramiento</label><div>@Model.Bien.Libramiento</div></div>
+        <div class="campo"><label>Instrumento legal</label><div>@Model.Bien.TipoInstNav?.Detalle @Model.Bien.InstrLegal</div></div>
+        <div class="campo"><label>Comprobante</label><div>@Model.Bien.TipoCompNav?.Detalle @Model.Bien.Comprobante</div></div>
+        <div class="campo"><label>Autorización</label><div>@Model.Bien.TipoAutorizaNav?.Detalle</div></div>
+    </div>
+
+    <div class="seccion-barra">Fotografías (@Model.Fotos.Count)</div>
+    <div class="galeria">
+        @foreach (var foto in Model.Fotos)
+        {
+            <div class="foto-item @(foto.Principal ? "principal" : "")">
+                <a href="~/@foto.Archivo" target="_blank">
+                    <img src="~/@(foto.ArchivoThumb ?? foto.Archivo)" alt="@foto.Descripcion" />
+                </a>
+            </div>
+        }
+        @if (!Model.Fotos.Any())
+        {
+            <p>El bien todavía no tiene fotos cargadas.</p>
+        }
+    </div>
+
+    @if (Model.Bien.FechaBaja is null)
+    {
+        <form method="post" asp-page-handler="Baja" asp-route-id="@Model.Bien.Id"
+              data-confirmar="Se registrará la baja del bien en el inventario.">
+            <div class="acciones">
+                <button type="submit" class="btn btn-peligro">
+                    <span class="material-symbols-outlined">delete</span> Dar de baja
+                </button>
+            </div>
+        </form>
+    }
+</div>

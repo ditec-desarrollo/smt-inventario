@@ -1,0 +1,303 @@
+@page
+@model InventarioSmt.Pages.Reportes.EtiquetasModel
+@using InventarioSmt.Servicios
+@{
+    ViewData["Title"] = "Etiquetas QR";
+    var elegidos = Model.D.Select(d => d.ToString()).ToHashSet();
+}
+
+<style>
+    .opcion-filtro { border: 1px solid #d0d7de; border-radius: 8px; padding: 10px 14px; margin: 0 0 12px; }
+    .opcion-filtro legend { font-weight: 600; padding: 0 6px; }
+    .opcion-filtro[disabled] { opacity: .5; }
+    .col-check { width: 32px; text-align: center; }
+    .aviso-error { color: #b42318; font-weight: 600; }
+</style>
+
+<div class="panel">
+    <div class="panel-encabezado">
+        <h2>Etiquetas QR</h2>
+        <a class="btn btn-secundario" asp-page="Index">
+            <span class="material-symbols-outlined">arrow_back</span> Reportes
+        </a>
+    </div>
+
+    <form method="get" id="formFiltro">
+        <input type="hidden" name="Buscar" value="true" />
+
+        <fieldset class="opcion-filtro" id="opcion1" disabled="@(Model.Modo != 1)">
+            <legend><label><input type="radio" name="Modo" value="1" checked="@(Model.Modo == 1)" form="formFiltro" /> Opción 1: por repartición y departamento</label></legend>
+            <div class="grid-form">
+                <div class="campo">
+                    <label for="Rep">Repartición</label>
+                    <select id="Rep" name="Rep">
+                        <option value="">Elegí la repartición</option>
+                        @foreach (var r in Model.Reparticiones)
+                        {
+                            <option value="@r.Valor" data-nombre="@r.Nombre" selected="@(r.Valor == Model.Rep?.ToString())">@r.Texto</option>
+                        }
+                    </select>
+                </div>
+                <div class="campo">
+                    <label for="Texto">Texto en la descripción (opcional)</label>
+                    <input id="Texto" name="Texto" value="@Model.Texto" placeholder="Busca en equipamiento y características" autocomplete="off" />
+                </div>
+            </div>
+
+            <p class="ayuda">Departamentos: pasá a la derecha los que quieras incluir. Si no elegís ninguno, se incluyen todos los de la repartición.</p>
+            <div class="listas-dobles">
+                <div class="lista">
+                    <input id="filtroDeptos" placeholder="Buscar departamento" autocomplete="off" />
+                    <select id="depOrigen" multiple>
+                        @foreach (var d in Model.Departamentos.Where(d => !elegidos.Contains(d.Valor)))
+                        {
+                            <option value="@d.Valor" data-padre="@d.Padre">@d.Texto</option>
+                        }
+                    </select>
+                </div>
+                <div class="botones-lista">
+                    <button type="button" class="btn btn-secundario" id="btnAgregar" title="Agregar los marcados">&gt;</button>
+                    <button type="button" class="btn btn-secundario" id="btnTodos" title="Agregar todos">Todos &gt;&gt;</button>
+                    <button type="button" class="btn btn-secundario" id="btnQuitar" title="Quitar los marcados">&lt;</button>
+                    <button type="button" class="btn btn-secundario" id="btnNinguno" title="Quitar todos">&lt;&lt; Ninguno</button>
+                </div>
+                <div class="lista">
+                    <label for="depElegidos">Seleccionados</label>
+                    <select id="depElegidos" name="D" multiple>
+                        @foreach (var d in Model.Departamentos.Where(d => elegidos.Contains(d.Valor)))
+                        {
+                            <option value="@d.Valor" data-padre="@d.Padre">@d.Texto</option>
+                        }
+                    </select>
+                </div>
+            </div>
+        </fieldset>
+
+        <fieldset class="opcion-filtro" id="opcion2" disabled="@(Model.Modo != 2)">
+            <legend><label><input type="radio" name="Modo" value="2" checked="@(Model.Modo == 2)" form="formFiltro" /> Opción 2: por rango de ID</label></legend>
+            <div class="grid-form">
+                <div class="campo">
+                    <label for="Desde">ID desde</label>
+                    <input id="Desde" name="Desde" type="number" min="1" value="@Model.Desde" />
+                </div>
+                <div class="campo">
+                    <label for="Hasta">ID hasta</label>
+                    <input id="Hasta" name="Hasta" type="number" min="1" value="@Model.Hasta" />
+                </div>
+            </div>
+        </fieldset>
+
+        <div class="campo">
+            <label for="Titulo">Título del reporte</label>
+            <input id="Titulo" name="Titulo" value="@Model.Titulo" maxlength="150" autocomplete="off" />
+        </div>
+
+        <div class="acciones">
+            <button type="submit" class="btn btn-primario">
+                <span class="material-symbols-outlined">search</span> Buscar
+            </button>
+        </div>
+    </form>
+
+    @if (Model.Error is not null)
+    {
+        <p class="aviso-error">@Model.Error</p>
+    }
+    else if (Model.Buscar)
+    {
+        <form method="post" id="formSeleccion" target="_blank">
+            <input type="hidden" name="ids" id="idsSeleccion" />
+            <input type="hidden" name="Titulo" id="tituloSeleccion" />
+
+            <div class="seccion-barra">@Model.Filas.Count bien(es) · <span id="cantMarcados">@Model.Filas.Count</span> marcado(s)</div>
+            @if (Model.Recortado)
+            {
+                <p class="aviso-error">Se muestran los primeros @EtiquetasModel.MaximoFilas bienes. Acotá el filtro para ver el resto.</p>
+            }
+
+            <div class="tabla-scroll">
+                <table class="tabla-smt">
+                    <thead>
+                        <tr>
+                            <th class="col-check"><input type="checkbox" id="marcarTodos" checked title="Marcar o desmarcar todos" /></th>
+                            <th>ID</th>
+                            <th>Identificación</th>
+                            <th>Equipamiento</th>
+                            <th>Fecha de alta</th>
+                            <th>Estado</th>
+                            <th>QR</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @{ string? deptoAnterior = null; }
+                        @foreach (var f in Model.Filas)
+                        {
+                            @if (Model.Modo == 1 && f.Departamento != deptoAnterior)
+                            {
+                                deptoAnterior = f.Departamento;
+                                <tr><td colspan="7"><strong>@f.Departamento</strong></td></tr>
+                            }
+                            <tr>
+                                <td class="col-check"><input type="checkbox" class="marcar-etiqueta" value="@f.Id" checked /></td>
+                                <td>@f.Id</td>
+                                <td>@FormatoHelper.Identificacion(f.Identificacion)</td>
+                                <td>@f.Equipamiento</td>
+                                <td>@f.FechaAlta?.ToString("dd/MM/yyyy")</td>
+                                <td>@f.Estado</td>
+                                <td>
+                                    <a class="btn btn-secundario btn-chico" target="_blank" title="Imprimir el QR de este bien"
+                                       href="@Url.Page("/Inventario/Etiqueta", new { id = f.Id, auto = 1 })">
+                                        <span class="material-symbols-outlined">qr_code_2</span>
+                                    </a>
+                                </td>
+                            </tr>
+                        }
+                        @if (!Model.Filas.Any())
+                        {
+                            <tr><td colspan="7">No hay bienes que cumplan el filtro.</td></tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            @if (Model.Filas.Any())
+            {
+                <div class="acciones">
+                    <button type="submit" class="btn btn-primario" formaction="@Url.Page("/Inventario/Etiqueta", new { auto = 1 })">
+                        <span class="material-symbols-outlined">print</span> Imprimir seleccionados en Zebra
+                    </button>
+                    <button type="submit" class="btn btn-secundario" formaction="@Url.Page("Etiquetas", "Indice")">
+                        <span class="material-symbols-outlined">picture_as_pdf</span> Índice de control (PDF)
+                    </button>
+                </div>
+            }
+        </form>
+    }
+</div>
+
+@section Scripts {
+    <script>
+        (function () {
+            var rep = document.getElementById('Rep');
+            var origen = document.getElementById('depOrigen');
+            var elegidos = document.getElementById('depElegidos');
+            var filtro = document.getElementById('filtroDeptos');
+            var titulo = document.getElementById('Titulo');
+            var desde = document.getElementById('Desde');
+            var hasta = document.getElementById('Hasta');
+            var opcion1 = document.getElementById('opcion1');
+            var opcion2 = document.getElementById('opcion2');
+            var radios = document.querySelectorAll('input[name="Modo"]');
+
+            function modo() {
+                var r = document.querySelector('input[name="Modo"]:checked');
+                return r ? r.value : '1';
+            }
+
+            // Título sugerido; se deja de actualizar cuando el usuario escribe uno propio.
+            function tituloPorDefecto() {
+                if (modo() === '2') {
+                    if (!desde.value && !hasta.value) return 'Reporte Bienes';
+                    return 'Reporte Bienes ID ' + (desde.value || '...') + ' a ' + (hasta.value || '...');
+                }
+                var o = rep.selectedOptions[0];
+                return o && o.value ? 'Reporte Bienes Reparticion: ' + o.dataset.nombre : 'Reporte Bienes Reparticion';
+            }
+            var tituloSugerido = tituloPorDefecto();
+            var tituloPropio = titulo.value !== '' && titulo.value !== tituloSugerido;
+            function actualizarTitulo() {
+                if (!tituloPropio) titulo.value = tituloPorDefecto();
+                tituloSugerido = tituloPorDefecto();
+            }
+            titulo.addEventListener('input', function () {
+                tituloPropio = titulo.value !== '' && titulo.value !== tituloSugerido;
+            });
+
+            function cambiarModo() {
+                opcion1.disabled = modo() !== '1';
+                opcion2.disabled = modo() !== '2';
+                // El radio queda dentro del fieldset deshabilitado: se rehabilita para poder volver.
+                radios.forEach(function (r) { r.disabled = false; });
+                actualizarTitulo();
+            }
+            radios.forEach(function (r) { r.addEventListener('change', cambiarModo); });
+            cambiarModo();
+
+            function normalizar(s) { return (s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase(); }
+
+            function ordenar(lista) {
+                Array.prototype.slice.call(lista.options)
+                    .sort(function (a, b) { return a.text.localeCompare(b.text, undefined, { numeric: true }); })
+                    .forEach(function (o) { lista.appendChild(o); });
+            }
+
+            // Solo los departamentos de la repartición elegida, y que coincidan con el texto buscado.
+            function aplicarFiltro() {
+                var palabras = normalizar(filtro.value).split(/\s+/).filter(Boolean);
+                Array.prototype.forEach.call(origen.options, function (o) {
+                    var texto = normalizar(o.text);
+                    o.hidden = o.dataset.padre !== rep.value ||
+                        !palabras.every(function (p) { return texto.indexOf(p) >= 0; });
+                });
+            }
+
+            function pasar(desdeLista, hacia, todos) {
+                Array.prototype.slice.call(desdeLista.options)
+                    .filter(function (o) { return (todos ? !o.hidden : o.selected); })
+                    .forEach(function (o) { o.selected = false; o.hidden = false; hacia.appendChild(o); });
+                ordenar(hacia);
+                aplicarFiltro();
+            }
+
+            rep.addEventListener('change', function () {
+                pasar(elegidos, origen, true);
+                actualizarTitulo();
+            });
+            desde.addEventListener('input', actualizarTitulo);
+            hasta.addEventListener('input', actualizarTitulo);
+            document.getElementById('btnAgregar').addEventListener('click', function () { pasar(origen, elegidos, false); });
+            document.getElementById('btnTodos').addEventListener('click', function () { pasar(origen, elegidos, true); });
+            document.getElementById('btnQuitar').addEventListener('click', function () { pasar(elegidos, origen, false); });
+            document.getElementById('btnNinguno').addEventListener('click', function () { pasar(elegidos, origen, true); });
+            origen.addEventListener('dblclick', function () { pasar(origen, elegidos, false); });
+            elegidos.addEventListener('dblclick', function () { pasar(elegidos, origen, false); });
+            filtro.addEventListener('input', aplicarFiltro);
+            aplicarFiltro();
+
+            document.getElementById('formFiltro').addEventListener('submit', function () {
+                Array.prototype.forEach.call(elegidos.options, function (o) { o.selected = true; });
+            });
+
+            // Grilla: marcar/desmarcar y envío de los bienes marcados.
+            var formSeleccion = document.getElementById('formSeleccion');
+            if (!formSeleccion) return;
+            var todos = document.getElementById('marcarTodos');
+            var casillas = document.querySelectorAll('.marcar-etiqueta');
+            var contador = document.getElementById('cantMarcados');
+
+            function contar() {
+                var marcados = document.querySelectorAll('.marcar-etiqueta:checked').length;
+                contador.textContent = marcados;
+                todos.checked = marcados === casillas.length && marcados > 0;
+                todos.indeterminate = marcados > 0 && marcados < casillas.length;
+            }
+            todos.addEventListener('change', function () {
+                casillas.forEach(function (c) { c.checked = todos.checked; });
+                contar();
+            });
+            casillas.forEach(function (c) { c.addEventListener('change', contar); });
+
+            formSeleccion.addEventListener('submit', function (e) {
+                var ids = Array.prototype.map.call(document.querySelectorAll('.marcar-etiqueta:checked'),
+                    function (c) { return c.value; });
+                if (!ids.length) {
+                    e.preventDefault();
+                    alert('Marcá al menos un bien.');
+                    return;
+                }
+                document.getElementById('idsSeleccion').value = ids.join(',');
+                document.getElementById('tituloSeleccion').value = titulo.value;
+            });
+        })();
+    </script>
+}

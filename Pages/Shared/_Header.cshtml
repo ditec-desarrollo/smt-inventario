@@ -1,0 +1,19 @@
+@inject InventarioSmt.Servicios.SesionUsuario Sesion
+
+<header class="principal-header">
+    <a asp-page="/Index">
+        <img class="logo" src="~/img/logo_smt.png" alt="Municipalidad de San Miguel de Tucumán" />
+    </a>
+    @if (Sesion.Autenticado)
+    {
+        <div class="usuario">
+            <div>
+                <div>@Sesion.Nombre</div>
+                <div class="cuil">CUIL @Sesion.Cuil</div>
+            </div>
+            <div class="avatar">
+                <span class="material-symbols-outlined">account_circle</span>
+            </div>
+        </div>
+    }
+</header>

@@ -1,0 +1,391 @@
+@page "{id:int?}"
+@model InventarioSmt.Pages.Inventario.EditarModel
+@{
+    ViewData["Title"] = Model.EsAlta ? "Nuevo bien" : "Editar bien";
+}
+
+<div class="panel">
+    <div class="panel-encabezado">
+        <h2>@(Model.EsAlta ? "Alta de bien" : $"Bien N° {Model.Bien.Id}")</h2>
+        <a class="btn btn-secundario" asp-page="Index">Volver al listado</a>
+    </div>
+
+    @if (!Model.EsAlta)
+    {
+        <div class="qr-bien">
+            <img src="@Url.Page("Etiqueta", "Qr", new { id = Model.Bien.Id })"
+                 alt="Código QR del bien @Model.Bien.Id" width="140" height="140" />
+            <div class="qr-acciones">
+                <p class="qr-texto">Código QR del bien N° @Model.Bien.Id</p>
+                <a class="btn btn-secundario"
+                   href="@Url.Page("Etiqueta", new { id = Model.Bien.Id, auto = 1 })"
+                   target="_blank" rel="noopener">
+                    <span class="material-symbols-outlined">print</span> Imprimir QR
+                </a>
+            </div>
+        </div>
+    }
+
+    <form method="post" enctype="multipart/form-data">
+        <input type="hidden" asp-for="Bien.Id" />
+        <div asp-validation-summary="All" class="text-danger"></div>
+
+        <div class="seccion-barra">Identificación del bien</div>
+        <div class="grid-form">
+            <div class="campo">
+                <label asp-for="Bien.Identificacion"></label>
+                <input asp-for="Bien.Identificacion" />
+                <span asp-validation-for="Bien.Identificacion" class="text-danger"></span>
+            </div>
+            <div class="campo">
+                <label asp-for="Bien.Equipamiento"></label>
+                <input asp-for="Bien.Equipamiento" />
+            </div>
+            <div class="campo">
+                <label asp-for="Bien.Marca"></label>
+                <input asp-for="Bien.Marca" />
+            </div>
+            <div class="campo">
+                <label asp-for="Bien.Modelo"></label>
+                <input asp-for="Bien.Modelo" />
+            </div>
+            <div class="campo">
+                <label asp-for="Bien.NroSerie"></label>
+                <input asp-for="Bien.NroSerie" />
+            </div>
+            <div class="campo">
+                <label asp-for="Bien.Estado"></label>
+                <select asp-for="Bien.Estado" asp-items="Model.Estados">
+                    <option value="">Seleccione...</option>
+                </select>
+            </div>
+            <div class="campo">
+                <label asp-for="Bien.Cantidad"></label>
+                <input asp-for="Bien.Cantidad" type="number" min="1" />
+            </div>
+            <div class="campo">
+                <label asp-for="Bien.Color"></label>
+                <input asp-for="Bien.Color" />
+            </div>
+            <div class="campo campo-ancho">
+                <label asp-for="Bien.Caracteristicas"></label>
+                <textarea asp-for="Bien.Caracteristicas" rows="3"></textarea>
+            </div>
+        </div>
+
+        <div class="seccion-barra">Ubicación</div>
+        <div class="grid-form">
+            <div class="campo">
+                <label asp-for="Bien.Reparticion"></label>
+                <select asp-for="Bien.Reparticion" asp-items="Model.Reparticiones" data-nivel="0">
+                    <option value="">Seleccione...</option>
+                </select>
+                <span asp-validation-for="Bien.Reparticion" class="text-danger"></span>
+            </div>
+            @for (var i = 0; i < InventarioSmt.Pages.Inventario.EditarModel.NivelesUbicacion.Length; i++)
+            {
+                var nivel = InventarioSmt.Pages.Inventario.EditarModel.NivelesUbicacion[i];
+                var esOficina = nivel == "oficinas";
+                var campo = nivel switch
+                {
+                    "departamentos" => "Bien.IdDepartamento",
+                    "secciones" => "Bien.IdSeccion",
+                    "subsecciones" => "Bien.IdSubseccion",
+                    _ => "Bien.IdOficina"
+                };
+                var seleccionado = Model.Camino.ElementAtOrDefault(i + 1);
+                var id = esOficina ? "Bien_IdOficina" : $"ubicacion_{i}";
+                <div class="campo">
+                    <label for="@id">@InventarioSmt.Servicios.Catalogos.Catalogo.EtiquetaNivel(nivel)</label>
+                    <select id="@id" data-nivel="@(i + 1)" name="@campo">
+                        <option value="">(sin asignar)</option>
+                        @foreach (var o in Model.Arbol[nivel])
+                        {
+                            <option value="@o.Valor" data-padre="@o.Padre"
+                                    selected="@(o.Valor == seleccionado)">@o.Texto</option>
+                        }
+                    </select>
+                    @switch (nivel)
+                    {
+                        case "departamentos": <span asp-validation-for="Bien.IdDepartamento" class="text-danger"></span> break;
+                        case "secciones": <span asp-validation-for="Bien.IdSeccion" class="text-danger"></span> break;
+                        case "subsecciones": <span asp-validation-for="Bien.IdSubseccion" class="text-danger"></span> break;
+                        default: <span asp-validation-for="Bien.IdOficina" class="text-danger"></span> break;
+                    }
+                </div>
+            }
+            @* Códigos heredados: se conservan tal cual hasta que se elija una oficina. *@
+            <input type="hidden" asp-for="Bien.Seccion" />
+            <input type="hidden" asp-for="Bien.Subseccion" />
+            <input type="hidden" asp-for="Bien.Oficina" />
+            @if (Model.Bien.IdSeccion is null && (Model.Bien.Seccion != 0 || Model.Bien.Subseccion != 0 || (Model.Bien.Oficina ?? 0) != 0))
+            {
+                <div class="campo campo-ancho">
+                    <small>
+                        Ubicación heredada sin vincular: sección @Model.Bien.Seccion,
+                        subsección @Model.Bien.Subseccion, oficina @Model.Bien.Oficina.
+                        Al elegir la sección (y, si corresponde, subsección y oficina) se reemplazan por la estructura organizativa.
+                    </small>
+                </div>
+            }
+            <div class="campo">
+                <label asp-for="Bien.UbicacionFisica"></label>
+                <input asp-for="Bien.UbicacionFisica" />
+            </div>
+            <div class="campo">
+                <label asp-for="Bien.Legajo"></label>
+                <div class="campo-con-boton">
+                    <input asp-for="Bien.Legajo" type="number" min="0" id="legajoNumero" />
+                    <button type="button" class="btn btn-secundario" id="btnBuscarLegajo" title="Buscar por nombre">
+                        <span class="material-symbols-outlined">search</span>
+                    </button>
+                </div>
+                <span asp-validation-for="Bien.Legajo" class="text-danger"></span>
+                <span id="legajoAviso" class="text-danger"></span>
+            </div>
+            <div class="campo">
+                <label for="legajoNombre">Empleado</label>
+                <input id="legajoNombre" value="@Model.NombreLegajo" readonly tabindex="-1" />
+            </div>
+        </div>
+
+        <div class="seccion-barra">Origen, destino y documentación</div>
+        <div class="grid-form">
+            <div class="campo">
+                <label asp-for="Bien.Expediente"></label>
+                <input asp-for="Bien.Expediente" />
+            </div>
+            <div class="campo">
+                <label asp-for="Bien.Libramiento"></label>
+                <input asp-for="Bien.Libramiento" />
+            </div>
+            <div class="campo">
+                <label asp-for="Bien.TipoInst"></label>
+                <select asp-for="Bien.TipoInst" asp-items="Model.TiposInstrumento">
+                    <option value="">Seleccione...</option>
+                </select>
+            </div>
+            <div class="campo">
+                <label asp-for="Bien.InstrLegal"></label>
+                <input asp-for="Bien.InstrLegal" />
+            </div>
+            <div class="campo">
+                <label asp-for="Bien.RepOrigen"></label>
+                <select asp-for="Bien.RepOrigen" asp-items="Model.ReparticionesTodas">
+                    <option value="0">Sin especificar</option>
+                </select>
+                <span asp-validation-for="Bien.RepOrigen" class="text-danger"></span>
+            </div>
+            <div class="campo">
+                <label asp-for="Bien.FechaOrigen"></label>
+                <input asp-for="Bien.FechaOrigen" type="date" />
+            </div>
+            <div class="campo">
+                <label asp-for="Bien.RepDestino"></label>
+                <select asp-for="Bien.RepDestino" asp-items="Model.ReparticionesTodas">
+                    <option value="0">Sin especificar</option>
+                </select>
+                <span asp-validation-for="Bien.RepDestino" class="text-danger"></span>
+            </div>
+            <div class="campo">
+                <label asp-for="Bien.FechaDestino"></label>
+                <input asp-for="Bien.FechaDestino" type="date" />
+            </div>
+            <div class="campo">
+                <label asp-for="Bien.TipoAdquis"></label>
+                <select asp-for="Bien.TipoAdquis" asp-items="Model.TiposAdquisicion">
+                    <option value="0">Sin especificar</option>
+                </select>
+                <span asp-validation-for="Bien.TipoAdquis" class="text-danger"></span>
+            </div>
+            <div class="campo">
+                <label for="nomencladorTexto">Nomenclador</label>
+                <div class="combo-busqueda">
+                    <input id="nomencladorTexto" value="@Model.TextoNomenclador" autocomplete="off"
+                           placeholder="Escribí el código o parte de la descripción" />
+                </div>
+                <input type="hidden" asp-for="Bien.Cuenta" />
+                <input type="hidden" asp-for="Bien.Subcuenta" />
+                <span asp-validation-for="Bien.Cuenta" class="text-danger"></span>
+                <script type="application/json" id="nomencladorDatos">@Html.Raw(Model.NomencladorJson)</script>
+            </div>
+            <div class="campo">
+                <label asp-for="Bien.Proveedor"></label>
+                <div class="campo-con-boton">
+                    <input asp-for="Bien.Proveedor" type="number" min="0" id="proveedorNumero" />
+                    <button type="button" class="btn btn-secundario" id="btnBuscarProveedor" title="Buscar por nombre o CUIT">
+                        <span class="material-symbols-outlined">search</span>
+                    </button>
+                </div>
+                <span asp-validation-for="Bien.Proveedor" class="text-danger"></span>
+                <span id="proveedorAviso" class="text-danger"></span>
+            </div>
+            <div class="campo">
+                <label for="proveedorNombre">Nombre del proveedor</label>
+                <input id="proveedorNombre" value="@Model.NombreProveedor" readonly tabindex="-1" />
+            </div>
+            <div class="campo">
+                <label asp-for="Bien.Comprobante"></label>
+                <input asp-for="Bien.Comprobante" />
+            </div>
+            <div class="campo">
+                <label asp-for="Bien.TipoComp"></label>
+                <select asp-for="Bien.TipoComp" asp-items="Model.TiposComprobante">
+                    <option value="">Seleccione...</option>
+                </select>
+            </div>
+            <div class="campo">
+                <label asp-for="Bien.TipoAutoriza"></label>
+                <select asp-for="Bien.TipoAutoriza" asp-items="Model.TiposAutorizacion">
+                    <option value="">Seleccione...</option>
+                </select>
+            </div>
+            <div class="campo">
+                <label asp-for="Bien.ValorInicial"></label>
+                <input asp-for="Bien.ValorInicial" type="number" step="0.01" />
+            </div>
+            <div class="campo">
+                <label asp-for="Bien.FechaAlta"></label>
+                <input asp-for="Bien.FechaAlta" type="date" />
+            </div>
+            <div class="campo">
+                <label asp-for="Bien.FechaBaja"></label>
+                <input asp-for="Bien.FechaBaja" type="date" />
+            </div>
+            <div class="campo">
+                <label asp-for="Bien.Rendido"></label>
+                <select asp-for="Bien.Rendido" asp-items="Model.Rendidos"></select>
+                <span asp-validation-for="Bien.Rendido" class="text-danger"></span>
+            </div>
+        </div>
+
+        <div class="seccion-barra">Datos del automotor (si corresponde)</div>
+        <div class="grid-form">
+            <div class="campo">
+                <label asp-for="Bien.MarcaAuto"></label>
+                <input asp-for="Bien.MarcaAuto" />
+            </div>
+            <div class="campo">
+                <label asp-for="Bien.ModeloAuto"></label>
+                <input asp-for="Bien.ModeloAuto" />
+            </div>
+            <div class="campo">
+                <label asp-for="Bien.Dominio"></label>
+                <input asp-for="Bien.Dominio" />
+            </div>
+            <div class="campo">
+                <label asp-for="Bien.Chasis"></label>
+                <input asp-for="Bien.Chasis" />
+            </div>
+            <div class="campo">
+                <label asp-for="Bien.Motor"></label>
+                <input asp-for="Bien.Motor" />
+            </div>
+        </div>
+
+        <div class="seccion-barra">Fotografías</div>
+        <div class="campo">
+            <label for="Fotos">Tomar o seleccionar fotos (se pueden cargar varias)</label>
+            <input id="Fotos" name="Fotos" type="file" accept="image/*" capture="environment" multiple />
+        </div>
+        <div id="previews" class="previews"></div>
+
+        <div class="acciones">
+            <button type="submit" class="btn btn-primario">
+                <span class="material-symbols-outlined">save</span> Guardar
+            </button>
+            <a class="btn btn-secundario" asp-page="Index">Cancelar</a>
+        </div>
+    </form>
+</div>
+
+<div id="modalLegajos" class="modal" hidden>
+    <div class="modal-caja">
+        <div class="modal-encabezado">
+            <h3>Buscar empleado por nombre</h3>
+            <button type="button" class="modal-cerrar" id="btnCerrarLegajos" title="Cerrar">
+                <span class="material-symbols-outlined">close</span>
+            </button>
+        </div>
+        <div class="modal-cuerpo">
+            <div class="campo-con-boton">
+                <input type="text" id="buscarNombre" placeholder="Apellido o nombre (mínimo 2 letras)" autocomplete="off" />
+                <button type="button" class="btn btn-primario" id="btnEjecutarBusqueda">Buscar</button>
+            </div>
+            <div id="resultadoLegajos" class="tabla-scroll"></div>
+        </div>
+    </div>
+</div>
+
+<div id="modalProveedores" class="modal" hidden>
+    <div class="modal-caja">
+        <div class="modal-encabezado">
+            <h3>Buscar proveedor</h3>
+            <button type="button" class="modal-cerrar" id="btnCerrarProveedores" title="Cerrar">
+                <span class="material-symbols-outlined">close</span>
+            </button>
+        </div>
+        <div class="modal-cuerpo">
+            <div class="campo-con-boton">
+                <input type="text" id="buscarProveedor" placeholder="Nombre, razón social o CUIT (mínimo 2 caracteres)" autocomplete="off" />
+                <button type="button" class="btn btn-primario" id="btnEjecutarBusquedaProveedor">Buscar</button>
+            </div>
+            <div id="resultadoProveedores" class="tabla-scroll"></div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        prepararCapturaFotos('Fotos', 'previews', 1600);
+        prepararLegajo('@Url.Page("Editar")');
+        prepararProveedor('@Url.Page("Editar")');
+        prepararComboBusqueda({
+            texto: 'nomencladorTexto',
+            datos: 'nomencladorDatos',
+            alElegir: function (o) {
+                document.getElementById('Bien_Cuenta').value = o.c;
+                document.getElementById('Bien_Subcuenta').value = o.s;
+            }
+        });
+    </script>
+    <script>
+        // Cascada Repartición → Depto → Sección → Subsección → Oficina: cada nivel muestra
+        // solo los hijos del anterior y se vacía si la selección deja de corresponder.
+        (function () {
+            var niveles = Array.prototype.slice
+                .call(document.querySelectorAll('select[data-nivel]'))
+                .sort(function (a, b) { return a.dataset.nivel - b.dataset.nivel; });
+
+            function acotar(desde) {
+                for (var i = desde; i < niveles.length; i++) {
+                    var padre = niveles[i - 1].disabled ? '' : niveles[i - 1].value;
+                    var opciones = niveles[i].options;
+                    var visible = false;
+
+                    for (var j = 0; j < opciones.length; j++) {
+                        var o = opciones[j];
+                        if (!o.value) { continue; }
+
+                        o.hidden = o.dataset.padre !== padre;
+                        o.disabled = o.hidden;
+                        if (!o.hidden) { visible = true; }
+                    }
+
+                    if (niveles[i].selectedOptions.length && niveles[i].selectedOptions[0].hidden) {
+                        niveles[i].value = '';
+                    }
+
+                    niveles[i].disabled = !padre || !visible;
+                }
+            }
+
+            niveles.forEach(function (select, i) {
+                select.addEventListener('change', function () { acotar(i + 1); });
+            });
+
+            acotar(1);
+        })();
+    </script>
+}

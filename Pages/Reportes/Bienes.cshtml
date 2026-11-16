@@ -1,0 +1,203 @@
+@page
+@model InventarioSmt.Pages.Reportes.BienesModel
+@using InventarioSmt.Servicios
+@{
+    ViewData["Title"] = "Reporte de bienes";
+    var elegidos = Model.N.ToHashSet();
+}
+
+<div class="panel">
+    <div class="panel-encabezado">
+        <h2>Reporte de bienes</h2>
+        <a class="btn btn-secundario no-imprimir" asp-page="Index">
+            <span class="material-symbols-outlined">arrow_back</span> Reportes
+        </a>
+    </div>
+
+    <form method="get" id="formReporte" class="no-imprimir">
+        <input type="hidden" name="Buscar" value="true" />
+        <div class="grid-form">
+            <div class="campo">
+                <label for="Rep">Repartición</label>
+                <select id="Rep" name="Rep">
+                    <option value="">Todas las habilitadas</option>
+                    @foreach (var r in Model.Reparticiones)
+                    {
+                        <option value="@r.Valor" selected="@(r.Valor == Model.Rep?.ToString())">@r.Texto</option>
+                    }
+                </select>
+            </div>
+            <div class="campo">
+                <label for="Depto">Departamento</label>
+                <select id="Depto" name="Depto">
+                    <option value="">Todos</option>
+                    @foreach (var d in Model.Departamentos)
+                    {
+                        <option value="@d.Valor" data-padre="@d.Padre" selected="@(d.Valor == Model.Depto?.ToString())">@d.Texto</option>
+                    }
+                </select>
+            </div>
+        </div>
+
+        <div class="seccion-barra">Tipo de bien (nomenclador)</div>
+        <p class="ayuda">Pasá a la derecha las cuentas a incluir. Si no elegís ninguna, se incluyen todas.</p>
+        <div class="listas-dobles">
+            <div class="lista">
+                <input id="filtroNomenclador" placeholder="Buscar en el nomenclador" autocomplete="off" />
+                <select id="nomOrigen" multiple>
+                    @foreach (var n in Model.Nomenclador.Where(n => !elegidos.Contains(n.Valor)))
+                    {
+                        <option value="@n.Valor">@n.Texto</option>
+                    }
+                </select>
+            </div>
+            <div class="botones-lista">
+                <button type="button" class="btn btn-secundario" id="btnAgregar" title="Agregar los marcados">&gt;</button>
+                <button type="button" class="btn btn-secundario" id="btnTodos" title="Agregar todos">Todos &gt;&gt;</button>
+                <button type="button" class="btn btn-secundario" id="btnQuitar" title="Quitar los marcados">&lt;</button>
+                <button type="button" class="btn btn-secundario" id="btnNinguno" title="Quitar todos">&lt;&lt; Ninguno</button>
+            </div>
+            <div class="lista">
+                <label for="nomElegidos">Seleccionados</label>
+                <select id="nomElegidos" name="N" multiple>
+                    @foreach (var n in Model.Nomenclador.Where(n => elegidos.Contains(n.Valor)))
+                    {
+                        <option value="@n.Valor">@n.Texto</option>
+                    }
+                </select>
+            </div>
+        </div>
+
+        <div class="acciones">
+            <button type="submit" class="btn btn-primario">
+                <span class="material-symbols-outlined">search</span> Buscar
+            </button>
+            <button type="submit" class="btn btn-secundario" name="Imprimir" value="true" formtarget="_blank">
+                <span class="material-symbols-outlined">print</span> Imprimir
+            </button>
+            <button type="submit" class="btn btn-secundario" name="handler" value="Excel">
+                <span class="material-symbols-outlined">table_view</span> Exportar a Excel
+            </button>
+            <button type="submit" class="btn btn-secundario" name="handler" value="Pdf" formtarget="_blank">
+                <span class="material-symbols-outlined">picture_as_pdf</span> Exportar a PDF
+            </button>
+        </div>
+    </form>
+
+    @if (Model.Buscar || Model.Imprimir)
+    {
+        <div class="seccion-barra">@Model.Total bien(es) · @Model.Subtitulo()</div>
+
+        <div class="tabla-scroll">
+            <table class="tabla-smt">
+                <thead>
+                    <tr>
+                        <th>Identificación</th>
+                        <th>Equipamiento</th>
+                        <th>Repartición</th>
+                        <th>Departamento</th>
+                        <th>Fecha de alta</th>
+                        <th>Estado</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var f in Model.Filas)
+                    {
+                        <tr>
+                            <td>@FormatoHelper.Identificacion(f.Identificacion)</td>
+                            <td>@f.Equipamiento</td>
+                            <td>@f.Reparticion</td>
+                            <td>@f.Departamento</td>
+                            <td>@f.FechaAlta?.ToString("dd/MM/yyyy")</td>
+                            <td>@f.Estado</td>
+                        </tr>
+                    }
+                    @if (!Model.Filas.Any())
+                    {
+                        <tr><td colspan="6">No hay bienes que cumplan el filtro.</td></tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        @if (!Model.Imprimir && Model.TotalPaginas > 1)
+        {
+            <div class="paginacion no-imprimir">
+                @if (Model.Pagina > 1)
+                {
+                    <button type="submit" form="formReporte" class="btn btn-secundario btn-chico" name="Pagina" value="@(Model.Pagina - 1)">Anterior</button>
+                }
+                <span>Página @Model.Pagina de @Model.TotalPaginas</span>
+                @if (Model.Pagina < Model.TotalPaginas)
+                {
+                    <button type="submit" form="formReporte" class="btn btn-secundario btn-chico" name="Pagina" value="@(Model.Pagina + 1)">Siguiente</button>
+                }
+            </div>
+        }
+    }
+</div>
+
+@section Scripts {
+    <script>
+        (function () {
+            var rep = document.getElementById('Rep');
+            var depto = document.getElementById('Depto');
+            var origen = document.getElementById('nomOrigen');
+            var elegidos = document.getElementById('nomElegidos');
+            var filtro = document.getElementById('filtroNomenclador');
+
+            // Departamentos de la repartición elegida (todas si no hay ninguna).
+            function acotarDeptos() {
+                Array.prototype.forEach.call(depto.options, function (o) {
+                    if (!o.value) return;
+                    o.hidden = !!rep.value && o.dataset.padre !== rep.value;
+                });
+                if (depto.selectedOptions.length && depto.selectedOptions[0].hidden) depto.value = '';
+            }
+            rep.addEventListener('change', acotarDeptos);
+            acotarDeptos();
+
+            function normalizar(s) { return (s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase(); }
+
+            function ordenar(lista) {
+                Array.prototype.slice.call(lista.options)
+                    .sort(function (a, b) { return a.value.localeCompare(b.value, undefined, { numeric: true }); })
+                    .forEach(function (o) { lista.appendChild(o); });
+            }
+
+            function pasar(desde, hacia, todos) {
+                Array.prototype.slice.call(desde.options)
+                    .filter(function (o) { return (todos ? !o.hidden : o.selected); })
+                    .forEach(function (o) { o.selected = false; o.hidden = false; hacia.appendChild(o); });
+                ordenar(hacia);
+                aplicarFiltro();
+            }
+
+            function aplicarFiltro() {
+                var palabras = normalizar(filtro.value).split(/\s+/).filter(Boolean);
+                Array.prototype.forEach.call(origen.options, function (o) {
+                    var texto = normalizar(o.text);
+                    o.hidden = !palabras.every(function (p) { return texto.indexOf(p) >= 0; });
+                });
+            }
+
+            document.getElementById('btnAgregar').addEventListener('click', function () { pasar(origen, elegidos, false); });
+            document.getElementById('btnTodos').addEventListener('click', function () { pasar(origen, elegidos, true); });
+            document.getElementById('btnQuitar').addEventListener('click', function () { pasar(elegidos, origen, false); });
+            document.getElementById('btnNinguno').addEventListener('click', function () { pasar(elegidos, origen, true); });
+            origen.addEventListener('dblclick', function () { pasar(origen, elegidos, false); });
+            elegidos.addEventListener('dblclick', function () { pasar(elegidos, origen, false); });
+            filtro.addEventListener('input', aplicarFiltro);
+
+            // Todos los seleccionados viajan en el pedido, estén marcados o no.
+            document.getElementById('formReporte').addEventListener('submit', function () {
+                Array.prototype.forEach.call(elegidos.options, function (o) { o.selected = true; });
+            });
+
+            @if (Model.Imprimir)
+            {
+                <text>window.addEventListener('load', function () { window.print(); });</text>
+            }
+        })();
+    </script>
+}

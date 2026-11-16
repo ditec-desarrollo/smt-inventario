@@ -1,0 +1,30 @@
+
+/* ---------- Usuarios ---------- */
+.lista-modulos {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 8px;
+}
+
+.modulo {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+.modulo input {
+    width: auto;
+}
+
+.por-grupo[hidden] {
+    display: none;
+}
+
+.ayuda {
+    color: #616161;
+    font-size: .8rem;
+}

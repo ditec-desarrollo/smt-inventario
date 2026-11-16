@@ -1,0 +1,66 @@
+@page "{id:int}"
+@model InventarioSmt.Pages.Inventario.FotosModel
+@{
+    ViewData["Title"] = "Fotos del bien";
+}
+
+<div class="panel">
+    <div class="panel-encabezado">
+        <h2>Fotos — Bien N° @Model.Bien.Id (@Model.Bien.Equipamiento)</h2>
+        <a class="btn btn-secundario" asp-page="Detalle" asp-route-id="@Model.Bien.Id">Volver al detalle</a>
+    </div>
+
+    @if (TempData["Mensaje"] is string mensaje)
+    {
+        <div class="seccion-barra">@mensaje</div>
+    }
+
+    <form method="post" asp-page-handler="Subir" asp-route-id="@Model.Bien.Id" enctype="multipart/form-data">
+        <div class="campo">
+            <label for="Archivos">Tomar fotos con la cámara o elegir del dispositivo</label>
+            <input id="Archivos" name="Archivos" type="file" accept="image/*" capture="environment" multiple />
+        </div>
+        <div id="previews" class="previews"></div>
+        <div class="acciones">
+            <button type="submit" class="btn btn-primario">
+                <span class="material-symbols-outlined">photo_camera</span> Subir fotos
+            </button>
+        </div>
+    </form>
+
+    <div class="seccion-barra">Fotos cargadas (@Model.Galeria.Count)</div>
+    <div class="galeria">
+        @foreach (var foto in Model.Galeria)
+        {
+            <div class="foto-item @(foto.Principal ? "principal" : "")">
+                <a href="~/@foto.Archivo" target="_blank">
+                    <img src="~/@(foto.ArchivoThumb ?? foto.Archivo)" alt="@foto.Descripcion" />
+                </a>
+                <div class="pie">
+                    @if (foto.Principal)
+                    {
+                        <span class="chip chip-activo">Principal</span>
+                    }
+                    else
+                    {
+                        <form method="post" asp-page-handler="Principal" asp-route-id="@Model.Bien.Id" asp-route-idFoto="@foto.IdFoto">
+                            <button type="submit" class="btn btn-secundario btn-chico">Marcar principal</button>
+                        </form>
+                    }
+                    <form method="post" asp-page-handler="Eliminar" asp-route-id="@Model.Bien.Id" asp-route-idFoto="@foto.IdFoto"
+                          data-confirmar="La foto dejará de mostrarse en el inventario.">
+                        <button type="submit" class="btn btn-peligro btn-chico">Eliminar</button>
+                    </form>
+                </div>
+            </div>
+        }
+        @if (!Model.Galeria.Any())
+        {
+            <p>Todavía no hay fotos para este bien.</p>
+        }
+    </div>
+</div>
+
+@section Scripts {
+    <script>prepararCapturaFotos('Archivos', 'previews', 1600);</script>
+}

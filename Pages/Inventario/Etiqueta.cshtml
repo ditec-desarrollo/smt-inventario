@@ -1,0 +1,132 @@
+@page "{id:int?}"
+@model InventarioSmt.Pages.Inventario.EtiquetaModel
+@using InventarioSmt.Servicios
+@{
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Etiquetas QR</title>
+    <link rel="stylesheet" href="~/css/fuentes.css" />
+    <style>
+        /* Zebra ZD421 203 dpi: cada avance del medio es una fila de 2 troqueles de 52 mm. */
+        @@page {
+            size: 104mm 31.25mm;
+            margin: 0;
+        }
+
+        body {
+            font-family: 'Poppins', Arial, sans-serif;
+            margin: 0;
+            padding: 12px;
+            color: #000;
+            background: #f0f0f0;
+        }
+
+        .etiqueta {
+            box-sizing: border-box;
+            width: 104mm;
+            height: 31.25mm;
+            display: grid;
+            grid-template-columns: 52mm 52mm;
+            grid-template-rows: 31.25mm;
+            background: #fff;
+            page-break-after: always;
+            break-after: page;
+            break-inside: avoid;
+        }
+
+        .etiqueta:last-child {
+            page-break-after: auto;
+            break-after: auto;
+        }
+
+        .bloque {
+            box-sizing: border-box;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 2mm;
+            padding: 1.5mm;
+            overflow: hidden;
+        }
+
+        .bloque img {
+            width: 21mm;
+            height: 21mm;
+            image-rendering: pixelated;
+        }
+
+        .numero {
+            font-family: 'Poppins', Arial, sans-serif;
+            font-weight: 700;
+            font-size: 12pt;
+            letter-spacing: .3mm;
+            line-height: 1;
+            white-space: nowrap;
+        }
+
+        .barra {
+            margin-bottom: 12px;
+        }
+
+        @@media screen {
+            .etiqueta { margin-bottom: 6px; }
+        }
+
+        @@media print {
+            .barra { display: none; }
+            html, body { margin: 0; padding: 0; background: #fff; }
+            .etiqueta { margin: 0; }
+        }
+    </style>
+</head>
+<body>
+    <div class="barra">
+        <button type="button" onclick="imprimirZebra()">Imprimir etiquetas</button>
+        <button type="button" onclick="window.print()">Imprimir con el navegador</button>
+        <button type="button" onclick="descargarZpl()">Descargar ZPL</button>
+        <button type="button" onclick="window.close()">Cerrar</button>
+        <span id="estado"></span>
+    </div>
+
+    @foreach (var etiqueta in Model.Etiquetas)
+    {
+        <div class="etiqueta">
+            @foreach (var bien in etiqueta)
+            {
+                <div class="bloque">
+                    <img src="@Url.Page("Etiqueta", "Qr", new { id = bien.Id })"
+                         alt="Código QR del bien @bien.Id" />
+                    <div class="numero">@bien.Numero</div>
+                </div>
+            }
+        </div>
+    }
+
+    <form id="formZpl" method="post" asp-page-handler="Zpl" hidden>
+        <input type="hidden" name="ids" value="@string.Join(",", Model.Etiquetas.SelectMany(e => e).Select(b => b.Id))" />
+    </form>
+
+    <script src="~/js/zebra-etiquetas.js"></script>
+    <script>
+        var formZpl = document.getElementById('formZpl');
+
+        function descargarZpl() {
+            formZpl.submit();
+        }
+
+        function imprimirZebra() {
+            zebraImprimir(formZpl.action, document.getElementById('estado'),
+                { method: 'POST', body: new FormData(formZpl) }, descargarZpl);
+        }
+
+        if (new URLSearchParams(location.search).get('auto') === '1') {
+            window.addEventListener('load', imprimirZebra);
+        }
+    </script>
+</body>
+</html>

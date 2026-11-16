@@ -1,0 +1,130 @@
+@page "{id:int?}"
+@model InventarioSmt.Pages.Administracion.Usuarios.EditarModel
+@using InventarioSmt.Servicios
+@{
+    ViewData["Title"] = Model.EsAlta ? "Nuevo usuario" : "Editar usuario";
+}
+
+<div class="panel">
+    <div class="panel-encabezado">
+        <h2>@(Model.EsAlta ? "Alta de usuario" : Model.Datos.ApellidoNombre)</h2>
+        <a class="btn btn-secundario" asp-page="Index">Volver al listado</a>
+    </div>
+
+    <form method="post">
+        <input type="hidden" asp-for="Datos.IdUsuario" />
+        <div asp-validation-summary="All" class="text-danger"></div>
+
+        <div class="seccion-barra">Datos del usuario</div>
+        <div class="grid-form">
+            <div class="campo">
+                <label asp-for="Datos.ApellidoNombre"></label>
+                <input asp-for="Datos.ApellidoNombre" />
+                <span asp-validation-for="Datos.ApellidoNombre" class="text-danger"></span>
+            </div>
+            <div class="campo">
+                <label asp-for="Datos.Cuil"></label>
+                <input asp-for="Datos.Cuil" inputmode="numeric" maxlength="13" placeholder="20-12345678-9" />
+                <span class="ayuda">El mismo con el que entra a Ciudad Digital.</span>
+                <span asp-validation-for="Datos.Cuil" class="text-danger"></span>
+            </div>
+            <div class="campo">
+                <label asp-for="Datos.NroAfiliado"></label>
+                <input asp-for="Datos.NroAfiliado" />
+                <span asp-validation-for="Datos.NroAfiliado" class="text-danger"></span>
+            </div>
+            <div class="campo">
+                <label asp-for="Datos.IdGrupo"></label>
+                <select asp-for="Datos.IdGrupo" asp-items="Model.Grupos">
+                    <option value="">(sin grupo)</option>
+                </select>
+                <span asp-validation-for="Datos.IdGrupo" class="text-danger"></span>
+            </div>
+            <div class="campo">
+                <label asp-for="Datos.Estado"></label>
+                <select asp-for="Datos.Estado">
+                    <option value="0">Activo</option>
+                    <option value="1">Inactivo (no puede entrar)</option>
+                </select>
+            </div>
+            @if (Model.FechaAlta.HasValue)
+            {
+                <div class="campo">
+                    <label for="fechaAlta">Fecha de alta</label>
+                    <input id="fechaAlta" value="@Model.FechaAlta.Value.ToString("dd/MM/yyyy HH:mm")" readonly tabindex="-1" />
+                </div>
+            }
+        </div>
+
+        <div class="seccion-barra">Módulos</div>
+        <p class="ayuda">
+            El usuario entra a los módulos de su grupo más los que marques acá.
+            Los que ya da el grupo aparecen señalados; marcarlos también solo hace falta si
+            querés que los conserve aunque cambie de grupo.
+        </p>
+        <div class="lista-modulos">
+            @foreach (var c in Model.Cards)
+            {
+                <label class="modulo">
+                    <input type="checkbox" name="Modulos" value="@c.Id" checked="@Model.Modulos.Contains(c.Id)" />
+                    <span class="material-symbols-outlined">@IconoHelper.Normalizar(c.Icon)</span>
+                    <span>@c.Title@(c.Estado != 0 ? " (módulo inactivo)" : "")</span>
+                    <span class="chip chip-activo por-grupo" data-card="@c.Id" hidden>por el grupo</span>
+                </label>
+            }
+        </div>
+
+        <div class="seccion-barra">Reparticiones</div>
+        <p class="ayuda">
+            El usuario solo ve y carga bienes de las reparticiones que marques.
+            Si no tiene ninguna, no ve ningún bien.
+        </p>
+        <label class="modulo" style="max-width:520px;margin-bottom:8px">
+            <input type="checkbox" asp-for="Datos.TodasReparticiones" />
+            <span>Todas las reparticiones (incluidas las que se creen después)</span>
+        </label>
+        <div class="lista-modulos" id="listaReparticiones">
+            @foreach (var r in Model.ListaReparticiones)
+            {
+                <label class="modulo">
+                    <input type="checkbox" name="Reparticiones" value="@r.Codigo" checked="@Model.Reparticiones.Contains(r.Codigo)" />
+                    <span>@r.Codigo - @r.Nombre</span>
+                </label>
+            }
+        </div>
+
+        <div class="acciones">
+            <button type="submit" class="btn btn-primario">
+                <span class="material-symbols-outlined">save</span> Guardar
+            </button>
+            <a class="btn btn-secundario" asp-page="Index">Cancelar</a>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        (function () {
+            var porGrupo = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.AccesosPorGrupo));
+            var combo = document.getElementById('Datos_IdGrupo');
+
+            function marcar() {
+                var ids = porGrupo[combo.value] || [];
+                document.querySelectorAll('.por-grupo').forEach(function (s) {
+                    s.hidden = ids.indexOf(Number(s.dataset.card)) < 0;
+                });
+            }
+
+            combo.addEventListener('change', marcar);
+            marcar();
+
+            // Con "todas" marcado la lista no se usa; se atenúa pero se conserva por si se desmarca.
+            var todas = document.getElementById('Datos_TodasReparticiones');
+            var lista = document.getElementById('listaReparticiones');
+            function atenuar() { lista.style.opacity = todas.checked ? .45 : 1; }
+            todas.addEventListener('change', atenuar);
+            atenuar();
+        })();
+    </script>
+}

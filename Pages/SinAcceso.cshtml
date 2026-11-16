@@ -1,0 +1,18 @@
+@page
+@model SinAccesoModel
+@{
+    ViewData["Title"] = "Sin autorización";
+}
+
+<div class="panel">
+    <div class="panel-encabezado">
+        <h2>Usuario sin autorización</h2>
+    </div>
+    <p>
+        El usuario no se encuentra registrado o está inactivo en el sistema de inventario.
+        Comuníquese con el administrador para solicitar el alta.
+    </p>
+    <div class="acciones">
+        <a class="btn btn-primario" href="@Model.LoginUrl">Volver a Ciudad Digital</a>
+    </div>
+</div>

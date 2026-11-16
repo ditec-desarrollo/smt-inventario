@@ -1,0 +1,27 @@
+@page
+@model IndexModel
+@{
+    ViewData["Title"] = "Inicio";
+}
+
+<div class="titulo">
+    <h1>Bienvenidos</h1>
+    <p>Gestión de Inventario de Bienes Muebles — Municipalidad de San Miguel de Tucumán</p>
+</div>
+
+<div class="cards">
+    @foreach (var card in Model.Sesion.Accesos)
+    {
+        <a class="card-menu" href="@(string.IsNullOrWhiteSpace(card.Ruta) ? "#" : card.Ruta)">
+            <div class="card-titulo">@card.Title</div>
+            <span class="material-symbols-outlined icono">@InventarioSmt.Servicios.IconoHelper.Normalizar(card.Icon)</span>
+            <div class="card-subtitulo">@card.Subtitle</div>
+        </a>
+    }
+    @if (!Model.Sesion.Accesos.Any())
+    {
+        <div class="panel">
+            <p>El usuario no tiene módulos habilitados. Solicite los accesos al administrador del sistema.</p>
+        </div>
+    }
+</div>

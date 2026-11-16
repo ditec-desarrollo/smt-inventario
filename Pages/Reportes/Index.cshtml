@@ -1,0 +1,27 @@
+@page
+@model InventarioSmt.Pages.Reportes.IndexModel
+@{
+    ViewData["Title"] = "Reportes";
+}
+
+<div class="titulo">
+    <h1>Reportes</h1>
+    <p>Elegí el reporte</p>
+</div>
+
+<div class="cards">
+    @foreach (var r in InventarioSmt.Pages.Reportes.IndexModel.Reportes)
+    {
+        <a class="card-menu" asp-page="@r.Pagina">
+            <div class="card-titulo">@r.Titulo</div>
+            <span class="material-symbols-outlined icono">@r.Icono</span>
+            <div class="card-subtitulo">@r.Descripcion</div>
+        </a>
+    }
+</div>
+
+<div class="acciones">
+    <a class="btn btn-secundario" href="/">
+        <span class="material-symbols-outlined">arrow_back</span> Inicio
+    </a>
+</div>

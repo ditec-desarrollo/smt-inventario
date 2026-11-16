@@ -1,0 +1,193 @@
+@page
+@model InventarioSmt.Pages.Reportes.BajasModel
+@{
+    ViewData["Title"] = "Solicitudes de baja";
+}
+
+<style>
+    .seccion-barra .btn { margin-left: 8px; padding: 2px 10px; font-size: .85rem; vertical-align: middle; }
+    .col-check { width: 32px; text-align: center; }
+    .aviso-error { color: #b42318; font-weight: 600; }
+</style>
+
+<div class="panel">
+    <div class="panel-encabezado">
+        <h2>Solicitudes de baja</h2>
+        <a class="btn btn-secundario" asp-page="Index">
+            <span class="material-symbols-outlined">arrow_back</span> Reportes
+        </a>
+    </div>
+
+    <form method="get" id="formFiltro">
+        <input type="hidden" name="Buscar" value="true" />
+        <div class="grid-form">
+            <div class="campo">
+                <label for="Rep">Repartición</label>
+                <select id="Rep" name="Rep">
+                    <option value="">Todas las habilitadas</option>
+                    @foreach (var r in Model.Reparticiones)
+                    {
+                        <option value="@r.Valor" selected="@(r.Valor == Model.Rep?.ToString())">@r.Texto</option>
+                    }
+                </select>
+            </div>
+            <div class="campo">
+                <label for="Desde">Fecha de baja desde</label>
+                <input id="Desde" name="Desde" type="date" value="@Model.Desde?.ToString("yyyy-MM-dd")" />
+            </div>
+            <div class="campo">
+                <label for="Hasta">Fecha de baja hasta</label>
+                <input id="Hasta" name="Hasta" type="date" value="@Model.Hasta?.ToString("yyyy-MM-dd")" />
+            </div>
+        </div>
+
+        <div class="campo">
+            <label for="Titulo">Título del reporte</label>
+            <input id="Titulo" name="Titulo" value="@Model.Titulo" maxlength="150" autocomplete="off" />
+        </div>
+
+        <div class="acciones">
+            <button type="submit" class="btn btn-primario">
+                <span class="material-symbols-outlined">search</span> Buscar
+            </button>
+        </div>
+    </form>
+
+    @if (Model.Error is not null)
+    {
+        <p class="aviso-error">@Model.Error</p>
+    }
+    else if (Model.Buscar)
+    {
+        <form method="post" id="formSeleccion" target="_blank">
+            <input type="hidden" name="ids" id="idsSeleccion" />
+            <input type="hidden" name="Titulo" id="tituloSeleccion" />
+            <input type="hidden" name="Rep" value="@Model.Rep" />
+
+            <div class="seccion-barra">
+                @Model.Filas.Count bien(es) · <span id="cantMarcados">@Model.Filas.Count</span> marcado(s)
+                @if (Model.Filas.Any())
+                {
+                    <button type="button" class="btn btn-secundario" id="btnMarcarTodos">
+                        <span class="material-symbols-outlined">check_box</span> Todos
+                    </button>
+                    <button type="button" class="btn btn-secundario" id="btnMarcarNinguno">
+                        <span class="material-symbols-outlined">check_box_outline_blank</span> Ninguno
+                    </button>
+                }
+            </div>
+            @if (Model.Recortado)
+            {
+                <p class="aviso-error">Se muestran los primeros @BajasModel.MaximoFilas bienes. Acotá el filtro para ver el resto.</p>
+            }
+
+            <div class="tabla-scroll">
+                <table class="tabla-smt">
+                    <thead>
+                        <tr>
+                            <th class="col-check"><input type="checkbox" id="marcarTodos" checked title="Marcar o desmarcar todos" /></th>
+                            <th>ID</th>
+                            <th>Equipamiento</th>
+                            <th>Repartición</th>
+                            <th>Departamento</th>
+                            <th>Fecha de alta</th>
+                            <th>Fecha de baja</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var f in Model.Filas)
+                        {
+                            <tr>
+                                <td class="col-check"><input type="checkbox" class="marcar-bien" value="@f.Id" checked /></td>
+                                <td><a asp-page="/Inventario/Detalle" asp-route-id="@f.Id" target="_blank">@f.Id</a></td>
+                                <td>@f.Equipamiento</td>
+                                <td>@f.Reparticion</td>
+                                <td>@f.Departamento</td>
+                                <td>@f.FechaAlta?.ToString("dd/MM/yyyy")</td>
+                                <td>@f.FechaBaja?.ToString("dd/MM/yyyy")</td>
+                            </tr>
+                        }
+                        @if (!Model.Filas.Any())
+                        {
+                            <tr><td colspan="7">No hay bienes en Solicitud de Baja que cumplan el filtro.</td></tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            @if (Model.Filas.Any())
+            {
+                <div class="acciones">
+                    <button type="submit" class="btn btn-primario" formaction="@Url.Page("Bajas", "Pdf")">
+                        <span class="material-symbols-outlined">picture_as_pdf</span> PDF de los marcados
+                    </button>
+                    <button type="submit" class="btn btn-secundario" formaction="@Url.Page("Bajas", "Excel")">
+                        <span class="material-symbols-outlined">table_view</span> Excel de los marcados
+                    </button>
+                </div>
+            }
+        </form>
+    }
+</div>
+
+@section Scripts {
+    <script>
+        (function () {
+            var titulo = document.getElementById('Titulo');
+            var desde = document.getElementById('Desde');
+            var hasta = document.getElementById('Hasta');
+
+            function fecha(valor) {
+                if (!valor) return '...';
+                var p = valor.split('-');
+                return p[2] + '/' + p[1] + '/' + p[0];
+            }
+
+            // Título sugerido; se deja de actualizar cuando el usuario escribe uno propio.
+            function tituloPorDefecto() {
+                return 'Solicitud de Baja de Bienes entre ' + fecha(desde.value) + ' y ' + fecha(hasta.value);
+            }
+            var manual = titulo.value !== '' && titulo.value !== tituloPorDefecto();
+            titulo.addEventListener('input', function () { manual = titulo.value !== ''; });
+            function actualizarTitulo() { if (!manual) titulo.value = tituloPorDefecto(); }
+            desde.addEventListener('change', actualizarTitulo);
+            hasta.addEventListener('change', actualizarTitulo);
+
+            var formSeleccion = document.getElementById('formSeleccion');
+            if (!formSeleccion) return;
+            var todos = document.getElementById('marcarTodos');
+            var casillas = document.querySelectorAll('.marcar-bien');
+            var contador = document.getElementById('cantMarcados');
+
+            function contar() {
+                var marcados = document.querySelectorAll('.marcar-bien:checked').length;
+                contador.textContent = marcados;
+                todos.checked = marcados === casillas.length && marcados > 0;
+                todos.indeterminate = marcados > 0 && marcados < casillas.length;
+            }
+            function marcar(valor) {
+                casillas.forEach(function (c) { c.checked = valor; });
+                contar();
+            }
+            todos.addEventListener('change', function () { marcar(todos.checked); });
+            var btnMarcarTodos = document.getElementById('btnMarcarTodos');
+            if (btnMarcarTodos) {
+                btnMarcarTodos.addEventListener('click', function () { marcar(true); });
+                document.getElementById('btnMarcarNinguno').addEventListener('click', function () { marcar(false); });
+            }
+            casillas.forEach(function (c) { c.addEventListener('change', contar); });
+
+            formSeleccion.addEventListener('submit', function (e) {
+                var ids = Array.prototype.map.call(document.querySelectorAll('.marcar-bien:checked'),
+                    function (c) { return c.value; });
+                if (!ids.length) {
+                    e.preventDefault();
+                    alert('Marcá al menos un bien.');
+                    return;
+                }
+                document.getElementById('idsSeleccion').value = ids.join(',');
+                document.getElementById('tituloSeleccion').value = titulo.value;
+            });
+        })();
+    </script>
+}

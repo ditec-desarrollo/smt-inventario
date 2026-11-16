@@ -1,0 +1,25 @@
+@page
+@model InventarioSmt.Pages.Catalogos.IndexModel
+@{
+    ViewData["Title"] = "Catálogos";
+}
+
+<div class="panel">
+    <div class="panel-encabezado">
+        <h2>Catálogos del sistema</h2>
+        <a class="btn btn-secundario" href="/">
+            <span class="material-symbols-outlined">home</span> Volver al menú
+        </a>
+    </div>
+
+    <div class="catalogos">
+        @foreach (var c in Model.Catalogos)
+        {
+            <a class="catalogo-item" asp-page="Lista" asp-route-catalogo="@c.Clave">
+                <span class="material-symbols-outlined">@c.Icono</span>
+                <span class="catalogo-titulo">@c.Titulo</span>
+                <span class="catalogo-detalle">@c.Descripcion</span>
+            </a>
+        }
+    </div>
+</div>
